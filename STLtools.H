@@ -47,6 +47,14 @@ namespace STLtools
         v[1]=P2[1]-P1[1];
         v[2]=P2[2]-P1[2];
     }
+    AMREX_GPU_HOST_DEVICE AMREX_INLINE void getunitvec(Real v[3],Real vu[3])
+    {
+        Real vmag;
+        vmag=sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+        vu[0]=v[0]/vmag;
+        vu[1]=v[1]/vmag;
+        vu[2]=v[2]/vmag;
+    }
     AMREX_GPU_HOST_DEVICE AMREX_INLINE void CrossProd(Real v1[3],Real v2[3],Real v[3])
     {
         v[0]=v1[1]*v2[2]-v1[2]*v2[1];
@@ -78,6 +86,34 @@ namespace STLtools
         S2=side_op(L,e2);
         S3=side_op(L,e3);
     }
+    //get normal of triangle pointing at a test-point
+    AMREX_GPU_HOST_DEVICE AMREX_INLINE void tri_n(Real P1[3],Real P2[3],Real P3[3],
+            Real testp[3],Real n[3])
+    {
+        Real v1[3],v2[3],magn;
+        Real centr[3],c_tp_vec[3];
+
+        getvec(P1,P2,v1);
+        getvec(P1,P3,v2);
+        CrossProd(v1,v2,n);
+
+
+        centr[0]=0.333333*(P1[0]+P2[0]+P3[0]);
+        centr[1]=0.333333*(P1[1]+P2[1]+P3[1]);
+        centr[2]=0.333333*(P1[2]+P2[2]+P3[2]);
+
+        getvec(centr,testp,c_tp_vec);
+        magn=sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
+
+        if(DotProd(c_tp_vec,n) < 0.0)
+        {
+           magn=-magn;
+        }
+
+        n[0]=n[0]/magn;
+        n[1]=n[1]/magn;
+        n[2]=n[2]/magn;
+    }
     AMREX_GPU_HOST_DEVICE AMREX_INLINE Real triangle_area(Real P1[3],Real P2[3],Real P3[3])
     {
         Real v1[3],v2[3],area[3];
@@ -86,6 +122,83 @@ namespace STLtools
         getvec(P1,P3,v2);
         CrossProd(v1,v2,area);
         return(0.5 * sqrt(DotProd(area,area)) );
+    }
+    //this is only useful when v1-v2 segment intersects the triangle
+    AMREX_GPU_HOST_DEVICE AMREX_INLINE bool find_intersection_point(Real v1[3],Real v2[3],
+            Real t1[3], Real t2[3], Real t3[3],Real ip[3],int bisect_iters=20,Real tol=1e-6)
+    {
+        Real plane_eq_mid,plane_eq1,plane_eq2;
+
+        Real ab[3],ac[3],n[3],magn;
+        Real midp[3],p1[3],p2[3];
+
+        getvec(t1,t2,ab);
+        getvec(t1,t3,ac);
+
+        CrossProd(ab,ac,n);
+        magn=sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
+
+        n[0]=n[0]/magn;
+        n[1]=n[1]/magn;
+        n[2]=n[2]/magn;
+
+        p1[0]=v1[0];
+        p1[1]=v1[1];
+        p1[2]=v1[2];
+        
+        p2[0]=v2[0];
+        p2[1]=v2[1];
+        p2[2]=v2[2];
+
+     
+        bool all_ok=true;
+
+        for(int i=0;i<bisect_iters;i++)
+        {
+            midp[0]=0.5*(p1[0]+p2[0]);
+            midp[1]=0.5*(p1[1]+p2[1]);
+            midp[2]=0.5*(p1[2]+p2[2]);
+
+            plane_eq_mid= (midp[0]-t1[0])*n[0] + (midp[1]-t1[1])*n[1] + (midp[2]-t1[2])*n[2];
+            plane_eq1   = (p1[0]  -t1[0])*n[0] + (p1[1]  -t1[1])*n[1] + (p1[2]  -t1[2])*n[2];
+            plane_eq2   = (p2[0]  -t1[0])*n[0] + (p2[1]  -t1[1])*n[1] + (p2[2]  -t1[2])*n[2];
+            
+            //Print()<<"midp:"<<midp[0]<<"\t"<<midp[1]<<"\t"<<midp[2]<<"\t"<<plane_eq_mid<<"\n";
+
+            if(fabs(plane_eq_mid) < tol)
+            {
+                break;
+            }
+
+            if(plane_eq_mid*plane_eq1 < 0.0)
+            {
+                p2[0]=midp[0];
+                p2[1]=midp[1];
+                p2[2]=midp[2];
+            }
+            else if(plane_eq_mid*plane_eq2 < 0.0)
+            {
+                p1[0]=midp[0];
+                p1[1]=midp[1];
+                p1[2]=midp[2];
+            }
+            else //plane_eq_mid is 0 
+             //or error: p1,midp and p2 are on the same side 
+             //which is not what this function is meant for
+            {
+                if(plane_eq_mid*plane_eq1 > 0.0 and plane_eq_mid*plane_eq2 > 0.0)
+                {
+                    all_ok=false;
+                }
+                break;
+            }
+        }
+
+        ip[0]=midp[0];
+        ip[1]=midp[1];
+        ip[2]=midp[2];
+
+        return(all_ok);
     }
 
     AMREX_GPU_HOST_DEVICE AMREX_INLINE int lineseg_tri_intersect(Real v1[3],Real v2[3],
