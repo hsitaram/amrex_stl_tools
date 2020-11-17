@@ -97,6 +97,8 @@ int main (int argc, char* argv[])
 
         Array<Real,AMREX_SPACEDIM> plo_arr{plo[0],plo[1],plo[2]};
         Array<Real,AMREX_SPACEDIM> po_arr{pointoutside[0],pointoutside[1],pointoutside[2]};
+        Real inside=-1.0;
+        Real outside=1.0;
 
         for (MFIter mfi(lsphi); mfi.isValid(); ++mfi) // Loop over grids
         {
@@ -134,27 +136,19 @@ int main (int argc, char* argv[])
                 }
                 if(num_intersects%2 == 0)
                 {
-                    lsphi_arr(i,j,k)=1.0;
+                    lsphi_arr(i,j,k)=outside;
                 }
                 else
                 {
-                    lsphi_arr(i,j,k)=-1.0;
+                    lsphi_arr(i,j,k)=inside;
                 }
 
             }); 
         }
 
-        Real inside=-1.0;
-        Real outside=1.0;
+        lsphi.FillBoundary(geom.periodicity());
 
-        for (MFIter mfi(apx); mfi.isValid(); ++mfi) // Loop over x faces
-        {
-            const Box& bx = mfi.validbox();
-            auto lsphi_arr = lsphi[mfi].array();
-            auto apx_arr   = apx[mfi].array();
-
-            #include"faceFrac_x.H"
-        }
+        #include"faceFrac_x.H"
 
         //write plot file
         std::string pltfile;

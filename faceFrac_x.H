@@ -36,9 +36,9 @@ for (MFIter mfi(apx); mfi.isValid(); ++mfi) // Loop over x faces
             {
                 if(lsphi_arr(i,j,k)==lsphi_arr(i,j+1,k+1))
                 {
-                    Print()<<"error multi cuts:"<<lsphi_arr(i,j,k)<<"\t"<<
+                    /*Print()<<"error multi cuts:"<<lsphi_arr(i,j,k)<<"\t"<<
                         lsphi_arr(i,j+1,k)<<"\t"<<lsphi_arr(i,j+1,k+1)<<"\t"<<
-                        lsphi_arr(i,j,k+1)<<"\n";
+                        lsphi_arr(i,j,k+1)<<"\n";*/
                 }
 
                 //P1 and P2 are inside
