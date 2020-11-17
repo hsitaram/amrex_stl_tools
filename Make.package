@@ -1,2 +1,2 @@
 CEXE_sources += driver.cpp STLtools.cpp 
-CEXE_headers += STLtools.H
+CEXE_headers += STLtools.H faceFrac_x.H
